@@ -16,44 +16,62 @@ namespace OnlineHull
         public Form1()
         {
             InitializeComponent();
+            pictureBox1.Image = new Bitmap(pictureBox1.Width, pictureBox1.Height);
         }
 
-        List<PointF> points = new List<PointF>();
+        //List<PointF> points = new List<PointF>();
+        Pen bluePen = new Pen(Color.Blue);
+        private Polygon p = new Polygon();
 
         private void pictureBox1_MouseClick(object sender, MouseEventArgs e)
         {
-            points.Add(e.Location);
+            //points.Add(e.Location);
+            InsertionHull(e.Location);
+            DrawPolygon();
         }
 
         private void clearButton_Click(object sender, EventArgs e)
         {
-            points.Clear();
+            //points.Clear();
+            p = new Polygon();
         }
 
-
-        Polygon InsertionHull(List<PointF> points)
+        void DrawPolygon()
         {
-            Polygon p = new Polygon();
-            if (points.Count > 0)
-                p.Insert(points[0]);
-            foreach (var point in points)
+            pictureBox1.Image = new Bitmap(pictureBox1.Image.Width, pictureBox1.Image.Height);
+            Vertex curr = p.V;
+            using (Graphics g = Graphics.FromImage(pictureBox1.Image))
             {
-                if (!PointInConvexPolygon(point, p))
+                /*foreach (var point in points)
+                    g.DrawRectangle(bluePen, point.X, point.Y, 1, 1);*/
+                for (int i = 0; i < p.Size; ++i)
                 {
-                    LeastVertex(p, ClosestToPolygon(point));
-                    SupportingLine(point, p, PointToEdgeRelation.Left);
-                    Vertex l = p.V;
-                    SupportingLine(point, p, PointToEdgeRelation.Right);
-                    p.Split(l);
-                    p.Insert(point);
+                    g.DrawRectangle(bluePen, curr.Point.X, curr.Point.Y, 1, 1);
+                    g.DrawLine(bluePen, curr.Point, curr.Next.Point);
+                    curr = curr.Next;
                 }
             }
-            return p;
+        }
+
+        void InsertionHull(PointF point)//List<PointF> points)
+        {
+            if (p.Size == 0)
+                p.Insert(point);
+            else if (!PointInConvexPolygon(point, p))
+            {
+                LeastVertex(p, ClosestToPolygon(point));
+                SupportingLine(point, p, PointToEdgeRelation.Left);
+                Vertex l = p.V;
+                SupportingLine(point, p, PointToEdgeRelation.Right);
+                p.Split(l);
+                p.SetV(l);
+                p.Insert(point);
+            }
         }
 
         void SupportingLine(PointF s, Polygon p, PointToEdgeRelation side)
         {
-            Rotation rotation = side == PointToEdgeRelation.Left ? Rotation.Clockwise : Rotation.Counterclockwise;
+            Rotation rotation = side == PointToEdgeRelation.Right ? Rotation.Clockwise : Rotation.Counterclockwise;
             Vertex a = p.V;
             Vertex b = p.Neighbour(rotation);
             PointToEdgeRelation rel = b.Point.Classify(s, a.Point);
@@ -73,9 +91,9 @@ namespace OnlineHull
                 double aDist = Math.Sqrt(aDiff.X * aDiff.X + aDiff.Y * aDiff.Y);
                 PointF bDiff = new PointF(p.X - b.Point.X, p.Y - b.Point.Y);
                 double bDist = Math.Sqrt(bDiff.X * bDiff.X + bDiff.Y * bDiff.Y);
-                if (aDist - bDist < 0.001) // aDist < bDist
+                if (aDist < bDist)
                     return -1;
-                if (aDist - bDist > 0.001) // aDist > bDist
+                if (aDist > bDist)
                     return 1;
                 return 0;
             };
@@ -89,6 +107,7 @@ namespace OnlineHull
             {
                 if (cmp(p.V, res) < 0)
                     res = p.V;
+                p.Advance(Rotation.Clockwise);
             }
 
             p.SetV(res);
@@ -108,16 +127,33 @@ namespace OnlineHull
             }
 
             Vertex start = p.V;
+            int intersectsCnt = 0;
             for (int i = 0; i < p.Size; ++i)
             {
-                if (s.Classify(p.Point, p.Next.Point) == PointToEdgeRelation.Left)
+                var classification = s.Classify(p.Point, p.Next.Point);
+                if (classification == PointToEdgeRelation.Destination || classification == PointToEdgeRelation.Origin
+                                                                      || classification == PointToEdgeRelation.Between)
                 {
                     p.SetV(start);
-                    return false;
+                    return true;
                 }
+                if (LinesIntersect(p.Point, p.Next.Point, s, new PointF(pictureBox1.Width - 1, s.Y)))
+                    ++intersectsCnt;
                 p.Advance(Rotation.Clockwise);
             }
-            return true;
+
+            p.SetV(start);
+            return intersectsCnt % 2 != 0;
+        }
+
+        bool LinesIntersect(PointF a, PointF b, PointF c, PointF d)
+        {
+            return PointsOnDifferentSides(a, b, c, d) && PointsOnDifferentSides(c, d, a, b);
+        }
+
+        bool PointsOnDifferentSides(PointF a, PointF b, PointF c, PointF d)
+        {
+            return c.Classify(a, b) != d.Classify(a, b);
         }
     }
 }

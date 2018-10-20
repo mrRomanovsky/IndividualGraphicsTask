@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Security;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms.VisualStyles;
@@ -30,6 +31,7 @@ namespace OnlineHull
         {
             other.Prev = this;
             other.Next = this.Next;
+            this.Next.Prev = other;
             this.Next = other;
             if (this.Prev == this)
                 this.Prev = other;
@@ -42,7 +44,7 @@ namespace OnlineHull
                 this.Prev.Next = this.Next;
             if (this.Next != null)
                 this.Next.Prev = this.Prev;
-            return this.Prev == this? null : this.Prev;
+            return this.Prev == this? null : this.Next;
         }
 
         public Vertex Neighbour(Rotation rotation)
@@ -54,21 +56,16 @@ namespace OnlineHull
 
         public Vertex Split(Vertex b)
         {
-            Vertex bp = b.Prev.Insert(new Vertex(b.Point));
-            Insert(new Vertex(Point));
-            Splice(bp);
-            return bp;
-        }
+            while (true)
+            {
+                Vertex v = Neighbour(Rotation.Counterclockwise);
+                if (v != b)
+                    v.Remove();
+                else
+                    break;
+            }
 
-        public void Splice(Vertex b)
-        {
-            Vertex a = this;
-            Vertex aNext = a.Next;
-            Vertex bNext = b.Next;
-            a.Next = bNext;
-            b.Next = aNext;
-            aNext.Prev = b;
-            bNext.Prev = a;
+            return this;
         }
 
         public PointF Point { get; private set; }

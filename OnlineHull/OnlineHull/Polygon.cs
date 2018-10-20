@@ -58,7 +58,7 @@ namespace OnlineHull
             if (Size == 0)
                 V = new Vertex(p);
             else
-                V = V.Insert(new Vertex(p));
+                V.Insert(new Vertex(p));
             ++Size;
             return V;
         }
@@ -87,7 +87,7 @@ namespace OnlineHull
             else
             {
                 Vertex curr = V;
-                while (curr != null)
+                while (curr != V)
                 {
                     ++Size;
                     curr = curr.Next;
